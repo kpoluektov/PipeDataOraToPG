@@ -57,3 +57,7 @@ POL.POL_TEST_OBJECTS5 + CLOB column = XMLForest(all columns for current row); PO
 `INFO [pool-1-thread-1] FuturedSourceTask - Table POL.POL_TEST_OBJECTS6 finished. 2690247 rows inserted. 3085 rps`  
 `INFO [pool-1-thread-2] FuturedSourceTask - Table POL.POL_TEST_OBJECTS5 finished. 2690198 rows inserted. 2867 rps`  
 `INFO [pool-1-thread-1] PipeBySizeDesc$ - Pipe finished in 940.2254366 sec`  
+
+### Special notes
+Tests were done with "CL8ISO8859P5" and "AL32UTF8" ORACLE CHARACTERSET. 
+In case of "AL32UTF8" `ORA-64451: Conversion of special character to escaped character failed.` issued for some far-non-ascii symbols from IMDB dataset `https://www.imdb.com/interfaces/`. Nothing done yet to fix.  
