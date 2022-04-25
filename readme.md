@@ -21,13 +21,10 @@ To try PipeOraToPG you can use docker. Just
 * grant him access to desired schema/tables
   `grant read on my_table to pipeoratopg;`
 
-* set up authentication details in \src\resources\application_docker.conf
+* set up authentication details in \src\resources\application.conf
 
-* build it
-  `docker build -t pipeoratopg .`
-
-* start it
-  `docker run -it pipeoratopg:latest`
+* run it
+  `docker run -v YOUR_PATH_TO_CATALOG_WITH_APPLICATION_CONF:/config -it konstantinpoluektov/pipeoratopg:latest`
 
 In real world you'd better package application using sbt or maven and run it on bare metal.
 
