@@ -1,0 +1,9 @@
+/target/
+.git
+.gitignore
+
+### IntelliJ IDEA ###
+.idea
+.bsp
+null
+project
