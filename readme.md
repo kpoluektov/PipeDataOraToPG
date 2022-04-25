@@ -10,7 +10,7 @@ Performance information can be found in the performace.md file
 To try PipeOraToPG you can use docker. Just
 
 * clone project
-  `git clone ...`
+  `git clone https://github.com/kpoluektov/PipeDataOraToPG`
 
 * create user in the original Oracle database
   `sqlplus sysuser@instance @src\main\scripts\sysaction.sql`
