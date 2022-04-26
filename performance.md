@@ -4,59 +4,79 @@
 Processor	Intel(R) Core(TM) i7-8665U CPU @ 1.90GHz, 2112 Mhz, 4 Core(s), 8 Logical Processor(s)
 
 ##DB version
-Oracle DB - 19.9
-PostgreSQL - 13.6
+Oracle DB - version 19.9; Charset "CL8ISO8859P5"
+PostgreSQL - version 13.6; Encoding "UTF8"
 
 ## Compete
-I won't make any comparisons with other migration tools. I just name it "pretty competitive". First, my test env is pretty poor. Second, main goal was to show performance for LOB columns.   
+I won't make any comparisons with other migration tools. I just name it "pretty competitive". First, my test env is pretty poor. Second, main goal is to show performance for LOB columns.   
 
 
-##Data
-`SQL> select table_name, num_rows, avg_row_len FROM all_tables where owner = 'POL' order by 1;`
 
-`POL_TEST_OBJECTS5                                  2690198         255`
-`POL_TEST_OBJECTS6                                  2690247         255`
-
-`2 rows selected`
-
-In fact tables are copies  of all_objects joined (cartesian) with `select level from dual connect by LEVEL < 50`    
+In fact tables are copies of all_objects joined (cartesian) with `select level from dual connect by level < 20`    
 
 #Test Results
 
 ### All tests
 `pg {
-numThreads = 8
-maxConnections = 8
+numThreads = 15
+maxConnections = 15
 minConnections = 2
-queueSize = 5000
+queueSize = 8000
 }
 numThreads = 2      
 checklob = true     
 fetchsize = 500000  
 `  
 
-CPU usage ~ 100% approx
+### Test1
+#### Data
+2 tables POL.POL_TEST_OBJECTS5, POL.POL_TEST_OBJECTS6 in parallel. no LOB columns
+`SQL> select table_name, num_rows, avg_row_len FROM all_tables where owner = 'POL' order by 1;`
 
-### Test1 
-no LOB columns
+`POL_TEST_OBJECTS5                                  1097940         140`  
+`POL_TEST_OBJECTS6                                  1097940         140`
 
-`INFO [pool-1-thread-1] FuturedSourceTask - Table POL.POL_TEST_OBJECTS6 finished. 2690247 rows inserted. 7818 rps`  
-`INFO [pool-1-thread-2] FuturedSourceTask - Table POL.POL_TEST_OBJECTS5 finished. 2690198 rows inserted. 7729 rps`  
-`INFO [pool-1-thread-2] PipeBySizeDesc$ - Pipe finished in 349.7420079 sec`
+`2 rows selected`
+#### Results
+`INFO [pool-1-thread-1] FuturedSourceTask - Table POL.POL_TEST_OBJECTS5 finished. 1097940 rows inserted. 9636 rps`  
+`INFO [pool-1-thread-1] FuturedSourceTask - Table POL.POL_TEST_OBJECTS6 finished. 1097940 rows inserted. 9577 rps`  
+`INFO [pool-1-thread-1] PipeBySizeDesc$ - Pipe finished in 116.4688376 sec`
+CPU usage ~ 100% 
 
 ### Test2
-POL.POL_TEST_OBJECTS5 + CLOB column = empty_clob; POL.POL_TEST_OBJECTS6 + BLOB = empty_blob
-
-`INFO [pool-1-thread-1] FuturedSourceTask - Table POL.POL_TEST_OBJECTS5 finished. 2690198 rows inserted. 7648 rps`  
-`INFO [pool-1-thread-2] FuturedSourceTask - Table POL.POL_TEST_OBJECTS6 finished. 2690247 rows inserted. 7549 rps`  
-`INFO [pool-1-thread-2] PipeBySizeDesc$ - Pipe finished in 358.1547942 sec`
+#### Data
+1 table POL.POL_TEST_OBJECTS5. no LOB columns
+#### Results
+`INFO [pool-1-thread-2] FuturedSourceTask - Table POL.POL_TEST_OBJECTS5 finished. 1097940 rows inserted. 23018 rps`  
+`INFO [pool-1-thread-2] PipeBySizeDesc$ - Pipe finished in 49.1779654 sec`
+CPU usage ~ 100% 
 
 ### Test3
-POL.POL_TEST_OBJECTS5 + CLOB column = XMLForest(all columns for current row); POL.POL_TEST_OBJECTS6 + BLOB = (utl_raw.cast_to_raw(all columns for current row))
+#### Data
+1 table POL.POL_TEST_OBJECTS5 + CLOB column = empty_clob
+#### Results
+`INFO [pool-1-thread-2] FuturedSourceTask - Table POL.POL_TEST_OBJECTS5 finished. 1097940 rows inserted. 17257 rps`  
+`INFO [pool-1-thread-2] PipeBySizeDesc$ - Pipe finished in 65.7302647 sec`
+CPU usage ~ 100% 
 
-`INFO [pool-1-thread-1] FuturedSourceTask - Table POL.POL_TEST_OBJECTS6 finished. 2690247 rows inserted. 3085 rps`  
-`INFO [pool-1-thread-2] FuturedSourceTask - Table POL.POL_TEST_OBJECTS5 finished. 2690198 rows inserted. 2867 rps`  
-`INFO [pool-1-thread-1] PipeBySizeDesc$ - Pipe finished in 940.2254366 sec`  
+### Test4
+#### Data
+1 table POL.POL_TEST_OBJECTS5 + CLOB column = XMLForest(all columns for current row). Avg row length is 650 symbols approx.
+#### Results
+`INFO [pool-1-thread-2] FuturedSourceTask - Table POL.POL_TEST_OBJECTS5 finished. 1097940 rows inserted. 7659 rps`  
+`INFO [pool-1-thread-2] PipeBySizeDesc$ - Pipe finished in 145.5811677 sec`  
+
+CPU usage ~ 80% 
+
+### Test5
+#### Data
+1 table POL.POL_TEST_OBJECTS5 + CLOB column = Some XML. Avg row length is 5150 symbols approx.
+#### Results
+`INFO [pool-1-thread-1] FuturedSourceTask - Table POL.POL_TEST_OBJECTS5 finished. 1097940 rows inserted. 1131 rps`  
+`INFO [pool-1-thread-1] PipeBySizeDesc$ - Pipe finished in 975.2163969 sec`
+
+CPU usage ~ 60%   
+ENV Bottleneck is "direct path read" wait event 
 
 ### Special notes
 Tests were done with "CL8ISO8859P5" and "AL32UTF8" ORACLE CHARACTERSET. 
