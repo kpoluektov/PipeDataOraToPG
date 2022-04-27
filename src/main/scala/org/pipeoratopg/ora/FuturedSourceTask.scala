@@ -25,7 +25,7 @@ class FuturedSourceTask(globalDB: Option[Database],
   var t0 : Long = 0L
 
   //read condition
-  val conPath = tbl.toEscapedString + "." + CONDITION_STR
+  val conPath: String = tbl.toEscapedString + "." + CONDITION_STR
   val condition : String =
     if (config.hasPath(conPath))
       config.getString(conPath)
@@ -79,7 +79,7 @@ class FuturedSourceTask(globalDB: Option[Database],
       case r : Success[List[Int]] =>
         log.info("Table {} finished. {} rows inserted. {}", tbl, r.value.sum, getPace(r.value.sum))
       case Failure(e) =>
-        e.printStackTrace
+        e.printStackTrace()
         log.error("Table {} failed with error {}", tbl, e.getMessage)
     }
     OraTools.closeTableXMLGen(futuredConnection.get.get())
@@ -91,7 +91,7 @@ class FuturedSourceTask(globalDB: Option[Database],
   def spool(conn : OraSession, rows: Int): Seq[Future[Int]] = {
     conn.setModuleAction(this.getClass.toString, s"$tbl")
     val data = new DataPartIterable(conn.get(), rows, "Clob")
-    val res = data.map(sinkTask.get.executePart(_)).toList
+    val res = data.map(sinkTask.get.executePart/*AsPreparedStatement*/(_)).toList
     res
   }
 }

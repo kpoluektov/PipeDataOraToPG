@@ -5,6 +5,7 @@ import org.pipeoratopg.ora.{FuturedSourceTask, OraSession}
 import org.slf4j.{Logger, LoggerFactory}
 import slick.jdbc.JdbcBackend.Database
 
+import java.util.Properties
 import java.util.concurrent.{ConcurrentHashMap, ConcurrentLinkedQueue, ExecutorService, Executors}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
@@ -13,6 +14,7 @@ import scala.util.{Failure, Success}
 object PipeBySizeDesc extends App{
   val t0 = System.nanoTime()
   val log: Logger = LoggerFactory.getLogger(this.getClass)
+  val props = new Properties
   val sinkDB : Database = Database.forConfig("pg", PipeConfig.config)
   val oraConn = new OraSession(PipeConfig.config)
   val oraOwner = PipeConfig.config.getString("oraOwner")

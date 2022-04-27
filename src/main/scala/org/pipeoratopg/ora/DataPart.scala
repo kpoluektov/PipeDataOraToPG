@@ -2,7 +2,7 @@ package org.pipeoratopg.ora
 
 import org.pipeoratopg.PipeConfig.XMLGEN_ROWSET
 
-import java.io.BufferedReader
+import java.io.{BufferedReader, Reader}
 import java.sql.{Blob, Clob, Connection}
 
 sealed trait AbstractDataPart{
@@ -20,17 +20,7 @@ case class DataPartEmpty() extends AbstractDataPart{
 
 case class DataPartClob(body : Clob, actualRows: Int, partSize: Int) extends AbstractDataPart {
 
-  override def getBody: Clob = body
-
-  def lines(reader: BufferedReader): Iterator[String] =
-    Iterator.continually(reader.readLine()).takeWhile(_ != null)
-
-  def getBodyAsString : String = {
-    if (actualRows > 0) {
-      val a = new BufferedReader(body.getCharacterStream)
-      lines(a).mkString
-    } else "<"+XMLGEN_ROWSET+"/>"
-  }
+  override def getBody: Reader = body.getCharacterStream
 
   def hasNext : Boolean = {
     actualRows == partSize

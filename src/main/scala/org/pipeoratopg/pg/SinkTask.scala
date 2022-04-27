@@ -7,8 +7,11 @@ import org.pipeoratopg.{Columns, PipeConfig, Table}
 import org.slf4j.{Logger, LoggerFactory}
 import slick.jdbc.JdbcBackend.Database
 import slick.jdbc.PostgresProfile.api._
+import slick.jdbc.{PositionedParameters, SetParameter}
 
-import scala.concurrent.Future
+import java.io.{BufferedReader, Reader}
+import java.sql.{Clob, PreparedStatement, Types}
+import scala.concurrent.{ExecutionContext, Future}
 
 class SinkTask(globalDB: Option[Database],  config: Config, tbl: Table) {
   val log: Logger = LoggerFactory.getLogger(this.getClass)
@@ -30,18 +33,24 @@ class SinkTask(globalDB: Option[Database],  config: Config, tbl: Table) {
     log.debug("SinkTask for table '{}' inited with column size of {}", tbl, this.columns.list.size)
   }
 
-  def executePart(part : AbstractDataPart): Future[Int] = {
+  implicit val readerSetter: AnyRef with SetParameter[Reader] = SetParameter[Reader]{
+    {
+      case (reader:Reader, params:PositionedParameters) => params.ps.setCharacterStream(1, reader)
+      case _ =>
+    }
+  }
 
+  def executePart(part : AbstractDataPart): Future[Int] = {
     val action  = part match {
       case c: DataPartClob =>
-        db.run(
-          sqlu"""with aTab as (select xml(${c.getBodyAsString}) as data)
+        val s = sqlu"""with aTab as (select xml(${c.getBody}) as data)
           insert into #${PipeConfig.pgSchema}.#${tbl.pgName.get} (#${columns.toColumnList})
           SELECT #${columns.toValuesColumnList}--xmltable.*
           FROM aTab,
           XMLTABLE('//#$XMLGEN_ROWSET/ROW'
           PASSING data
-            COLUMNS #${columns.toPGXMLString});""")
+            COLUMNS #${columns.toPGXMLString});"""
+        db.run(s)
     }
     action
   }
