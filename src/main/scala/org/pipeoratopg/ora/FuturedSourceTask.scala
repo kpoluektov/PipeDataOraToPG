@@ -91,7 +91,7 @@ class FuturedSourceTask(globalDB: Option[Database],
   def spool(conn : OraSession, rows: Int): Seq[Future[Int]] = {
     conn.setModuleAction(this.getClass.toString, s"$tbl")
     val data = new DataPartIterable(conn.get(), rows, "Clob")
-    val res = data.map(sinkTask.get.executePart/*AsPreparedStatement*/(_)).toList
+    val res = data.map(sinkTask.get.executePart(_)).toList
     res
   }
 }

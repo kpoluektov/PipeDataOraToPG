@@ -38,9 +38,9 @@ fetchsize = 500000
 
 `2 rows selected`
 #### Results
-`INFO [pool-1-thread-2] FuturedSourceTask - Table POL.POL_TEST_OBJECTS6 finished. 1097960 rows inserted. 11965 rps`  
-`INFO [pool-1-thread-1] FuturedSourceTask - Table POL.POL_TEST_OBJECTS5 finished. 1097960 rows inserted. 11734 rps`  
-`INFO [pool-1-thread-1] PipeBySizeDesc$ - Pipe finished in 94.9203806 sec`  
+`INFO [pool-1-thread-1] FuturedSourceTask - Table POL.POL_TEST_OBJECTS6 finished. 1097960 rows inserted. 12282 rps`  
+`INFO [pool-1-thread-1] FuturedSourceTask - Table POL.POL_TEST_OBJECTS5 finished. 1097960 rows inserted. 12130 rps`  
+`INFO [pool-1-thread-1] PipeBySizeDesc$ - Pipe finished in 91.7929211 sec`  
 CPU usage ~ 100% 
 
 ### Test2

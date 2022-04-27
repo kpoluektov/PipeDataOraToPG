@@ -100,7 +100,6 @@ object OraTools {
                      |  ( select dl.owner dlowner, dl.table_name, sum(ds.bytes) tbytes
                      |    from dba_segments ds, all_lobs dl
                      |	  where ds.owner = dl.owner and ds.segment_name = dl.SEGMENT_NAME
-                     |    and ds.segment_type = 'LOBSEGMENT'
                      |	  group by dl.owner, dl.table_name, ds.owner
                      |	) s where s.dlowner = atab.owner and s.table_name = atab.table_name) atbl """.stripMargin
 
