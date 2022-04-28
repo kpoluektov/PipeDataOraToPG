@@ -3,7 +3,7 @@ package org.pipeoratopg.pg
 import com.typesafe.config.Config
 import org.pipeoratopg.PipeConfig.XMLGEN_ROWSET
 import org.pipeoratopg.ora.{AbstractDataPart, DataPartClob}
-import org.pipeoratopg.{Columns, PipeConfig, Table}
+import org.pipeoratopg.{Columns, Table}
 import org.slf4j.{Logger, LoggerFactory}
 import slick.jdbc.JdbcBackend.Database
 import slick.jdbc.PostgresProfile.api._
@@ -18,7 +18,7 @@ class SinkTask(globalDB: Option[Database],  config: Config, tbl: Table) {
     case db:Database => db
     case _ => Database.forConfig("pg", config)
   }
-
+  val pgSchema : String = config.getString("pgSchema")
   var columns :Columns = new Columns()
 
   log.info("SinkTask for table '{}' created", tbl)
@@ -43,7 +43,7 @@ class SinkTask(globalDB: Option[Database],  config: Config, tbl: Table) {
     val action  = part match {
       case c: DataPartClob =>
         val s = sqlu"""with aTab as (select xml(${c.getBody}) as data)
-          insert into #${PipeConfig.pgSchema}.#${tbl.pgName.get} (#${columns.toColumnList})
+          insert into #$pgSchema.#${tbl.pgName.get} (#${columns.toColumnList})
           SELECT #${columns.toValuesColumnList}--xmltable.*
           FROM aTab,
           XMLTABLE('//#$XMLGEN_ROWSET/ROW'

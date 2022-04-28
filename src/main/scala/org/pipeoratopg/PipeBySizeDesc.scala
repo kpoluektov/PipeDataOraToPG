@@ -1,7 +1,7 @@
 package org.pipeoratopg
 
 import com.typesafe.config.ConfigFactory
-import org.pipeoratopg.ora.{FuturedSourceTask, OraSession}
+import org.pipeoratopg.ora.{FuturedSourceTask, OraSession, OraTools}
 import org.slf4j.{Logger, LoggerFactory}
 import slick.jdbc.JdbcBackend.Database
 
@@ -57,6 +57,7 @@ object PipeBySizeDesc extends App{
             val tableConfig = ConfigFactory.parseString(s"""table.name="${t.name}", table.owner="${t.owner}" """)
             val newConfig = tableConfig.withFallback(PipeConfig.config)
             val f = new FuturedSourceTask(Some(sinkDB), newConfig, oraConn)
+            f.init()
             f.run()
           case _ => //shouldn't get here
         }
@@ -71,16 +72,8 @@ object PipeBySizeDesc extends App{
   // start here
   log.info("Pipe started with mask {}", oraMask)
   oraConn.open()
-  val statement = oraConn.get().createStatement()
-  val resultSet = statement.executeQuery(
-    s"""select table_name from all_tables where owner = '$oraOwner'
-       |and regexp_like(table_name, '$oraMask')  order by num_rows*avg_row_len desc nulls last""".stripMargin)
   log.info("Thread pool size is {}", threadPoolSize)
-  private var tables : Seq[Table] = Seq()
-  while ( resultSet.next() ) {
-    tables = tables :+ Table(oraOwner, resultSet.getString("table_name"))
-  }
-  statement.close()
+  private val tables: Seq[Table] = OraTools.getTables(oraConn.get(), oraOwner, oraMask)
   log.info("Found {} tables to go", tables.size)
 
   tables.map{ t =>

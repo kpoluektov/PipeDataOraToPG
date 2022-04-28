@@ -1,8 +1,9 @@
 package org.pipeoratopg.ora
 
-import org.pipeoratopg.{PipeConfig, Table}
+import org.pipeoratopg.PipeConfig.XML_COLUMN_PREFIX
+import org.pipeoratopg.{Column, Columns, PipeConfig, Table}
 
-import java.sql.{Clob, Connection, Types}
+import java.sql.{Clob, Connection, SQLException, Types}
 case class PartResp(rows: Int, clob: Clob)
 
 object OraTools {
@@ -107,5 +108,51 @@ object OraTools {
     }
     statement.close()
     res
+  }
+  def getTables(connection: Connection, oraOwner: String, oraMask: String) : Seq[Table] = {
+    val statement = connection.createStatement()
+    var tables: Seq[Table] = Seq()
+    try {
+      val resultSet = statement.executeQuery(
+        s"""select table_name from all_tables where owner = '$oraOwner'
+           |and regexp_like(table_name, '$oraMask')  order by num_rows*avg_row_len desc nulls last""".stripMargin)
+      while (resultSet.next()) {
+        tables = tables :+ Table(oraOwner, resultSet.getString("table_name"))
+      }
+    } catch{
+      case e : SQLException => throw new Exception("Can't get list of tables for owner " + oraOwner + e.printStackTrace())
+    } finally {
+      statement.close()
+    }
+    tables
+  }
+  def getColumns(connection: Connection, tbl: Table) : Columns = {
+    val cols: Columns = new Columns()
+    val statement = connection.createStatement()
+    try {
+      val resultSet = statement.executeQuery(
+        s"""select column_name,
+           |data_type, $XML_COLUMN_PREFIX||column_id xmlname,
+           | data_length
+           | from all_tab_columns
+           | where owner = '${tbl.owner}' AND table_name = '${tbl.name}'
+           | order by column_id""".stripMargin)
+      while (resultSet.next()) {
+        cols.add(
+          Column(
+            resultSet.getString("column_name"),
+            resultSet.getString("data_type"),
+            resultSet.getString("xmlname"),
+            resultSet.getInt("data_length")
+          )
+        )
+      }
+    } catch {
+      case e : SQLException => throw new Exception("Can't get columns from table " + tbl + e.printStackTrace())
+    }
+    finally {
+      statement.close()
+    }
+    cols
   }
 }

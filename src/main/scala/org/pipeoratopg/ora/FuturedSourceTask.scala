@@ -22,6 +22,7 @@ class FuturedSourceTask(globalDB: Option[Database],
   var futuredConnection : Option[OraSession] = Some(null)
   var sinkTask : Option[SinkTask] = Option(null)
   var t0 : Long = 0L
+  var frows = 0
 
   //read condition
   val conPath: String = tbl.toEscapedString + "." + CONDITION_STR
@@ -32,31 +33,12 @@ class FuturedSourceTask(globalDB: Option[Database],
 
   var XMLGenCtx : java.math.BigDecimal = new java.math.BigDecimal(0)
 
-  def run(): Table = {
-    log.info("SourceTask for table '{}' started", tbl)
-    val cols: Columns = new Columns()
-    val statement = oraConnection.get().createStatement()
-    val resultSet = statement.executeQuery(s"""select column_name,
-                                                |data_type, $XML_COLUMN_PREFIX||column_id xmlname,
-                                                | data_length
-                                                | from all_tab_columns
-                                                | where owner = '${tbl.owner}' AND table_name = '${tbl.name}'
-                                                | order by column_id""".stripMargin)
-    while ( resultSet.next() ) {
-      cols.add(
-        Column(
-          resultSet.getString("column_name"),
-          resultSet.getString("data_type"),
-          resultSet.getString("xmlname"),
-          resultSet.getInt   ("data_length")
-        )
-      )
-    }
-    statement.close()
+  def init(): Unit = {
+    val cols: Columns = OraTools.getColumns(oraConnection.get(), tbl)
     val includeLOBSize = PipeConfig.checkLOBSize && cols.list.exists(r => r.oraType == "CLOB" || r.oraType == "BLOB")
     val rowSize = OraTools.getFetchSize(oraConnection.get(), tbl, includeLOBSize)
     log.debug("rowsize for table '{}' is {}", tbl, rowSize)
-    val frows = Math.max(PipeConfig.fetchSize/Math.max(rowSize, 1), 1)
+    frows = Math.max(PipeConfig.fetchSize/Math.max(rowSize, 1), 1)
     log.debug("fetchrows size for table '{}' is {}", tbl, frows)
     futuredConnection = Some(new OraSession(config))
     futuredConnection.get.open()
@@ -64,7 +46,11 @@ class FuturedSourceTask(globalDB: Option[Database],
     t0 = System.nanoTime()
     sinkTask = Some(new SinkTask(globalDB, config, tbl))
     sinkTask.get.init(cols)
-    val s = spool(futuredConnection.get, frows)
+  }
+
+  def run(): Table = {
+    log.info("SourceTask for table '{}' started", tbl)
+    val s = spool(futuredConnection.get, frows, XMLGenCtx)
     val seq = Future.sequence(s)
     seq.onComplete{
       doNext
@@ -89,9 +75,9 @@ class FuturedSourceTask(globalDB: Option[Database],
     PipeBySizeDesc.doFinalize(tbl)
   }
 
-  def spool(conn : OraSession, rows: Int): Seq[Future[Int]] = {
+  def spool(conn : OraSession, rows: Int, XMLGenCtxCur:java.math.BigDecimal): Seq[Future[Int]] = {
     conn.setModuleAction(this.getClass.toString, s"$tbl")
-    val data = new DataPartIterable(conn.get(), rows, "Clob", XMLGenCtx)
+    val data = new DataPartIterable(conn.get(), rows, "Clob", XMLGenCtxCur)
     val res = data.map(sinkTask.get.executePart(_)).toList
     res
   }

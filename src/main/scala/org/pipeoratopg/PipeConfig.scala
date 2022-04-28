@@ -1,14 +1,13 @@
 package org.pipeoratopg
 
-import com.typesafe.config.{ConfigFactory, ConfigObject, ConfigValue}
+import com.typesafe.config.{Config, ConfigFactory, ConfigObject, ConfigValue}
 
 import java.io.{File, FileNotFoundException}
 import java.util.Map.Entry
-import scala.collection.convert.ImplicitConversions.`set asScala`
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 
 object PipeConfig extends Constants{
-  val config = System.getProperty("config.path") match {
+  val config: Config = System.getProperty("config.path") match {
     case s:String =>
       try {
         ConfigFactory.parseFile(new File(s + "/application.conf"))
@@ -20,7 +19,6 @@ object PipeConfig extends Constants{
 
   val fetchSize: Int = config.getInt("fetchsize")
   val checkLOBSize: Boolean = config.getBoolean("checklob")
-  val pgSchema : String = config.getString("pgSchema")
 
   val typeMapping : Map[String, String]= if (config.hasPath(TYPEMAPPING_STR))
     (for {
