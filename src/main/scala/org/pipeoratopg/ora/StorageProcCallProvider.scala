@@ -30,6 +30,7 @@ object StorageProcCallProvider {
       parameter match {
         case p: POut => cs.registerOutParameter(index, p.parameterType)
         case PIn(None, t) => cs.setNull(index, t)
+        case PIn(v: Some[_], Types.NUMERIC) => cs.setBigDecimal(index, v.get.asInstanceOf[java.math.BigDecimal])
         case PIn(v: Some[_], Types.BIGINT) => cs.setLong(index, v.get.asInstanceOf[Long])
         case PIn(v: Some[_], Types.INTEGER) => cs.setInt(index, v.get.asInstanceOf[Int])
         case PIn(v: Some[_], Types.VARCHAR | Types.LONGVARCHAR) => cs.setString(index, v.get.asInstanceOf[String])

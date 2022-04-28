@@ -31,6 +31,8 @@ class FuturedSourceTask(globalDB: Option[Database],
       config.getString(conPath)
     else ""
 
+  var XMLGenCtx : java.math.BigDecimal = new java.math.BigDecimal(0)
+
   def run(): Table = {
     log.info("SourceTask for table '{}' started", tbl)
     val cols: Columns = new Columns()
@@ -59,7 +61,7 @@ class FuturedSourceTask(globalDB: Option[Database],
     log.debug("fetchrows size for table '{}' is {}", tbl, frows)
     futuredConnection = Some(new OraSession(config))
     futuredConnection.get.open()
-    OraTools.openTable(futuredConnection.get.get(), tbl, frows, condition)
+    XMLGenCtx = OraTools.openTable(futuredConnection.get.get(), tbl, frows, condition)
     t0 = System.nanoTime()
     sinkTask = Some(new SinkTask(globalDB, config, tbl))
     sinkTask.get.init(cols)
@@ -82,7 +84,7 @@ class FuturedSourceTask(globalDB: Option[Database],
         e.printStackTrace()
         log.error("Table {} failed with error {}", tbl, e.getMessage)
     }
-    OraTools.closeTableXMLGen(futuredConnection.get.get())
+    OraTools.closeTableXMLGen(futuredConnection.get.get(), XMLGenCtx)
     futuredConnection.get.close()
     PipeBySizeDesc.runNextTable()// do next
     PipeBySizeDesc.doFinalize(tbl)
@@ -90,7 +92,7 @@ class FuturedSourceTask(globalDB: Option[Database],
 
   def spool(conn : OraSession, rows: Int): Seq[Future[Int]] = {
     conn.setModuleAction(this.getClass.toString, s"$tbl")
-    val data = new DataPartIterable(conn.get(), rows, "Clob")
+    val data = new DataPartIterable(conn.get(), rows, "Clob", XMLGenCtx)
     val res = data.map(sinkTask.get.executePart(_)).toList
     res
   }

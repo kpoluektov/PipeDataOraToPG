@@ -1,93 +1,87 @@
 package org.pipeoratopg.ora
 
-import org.pipeoratopg.Table
-import java.sql.{Blob, Clob, Connection, Types}
+import org.pipeoratopg.{PipeConfig, Table}
+
+import java.sql.{Clob, Connection, Types}
 case class PartResp(rows: Int, clob: Clob)
 
 object OraTools {
 
-  def getPartCLOB(connection: Connection, tHash: String) : Option[Clob] = {
+  def getPartCLOBXMLGen(connection: Connection, ctx : java.math.BigDecimal) : Option[PartResp] = {
     val res = StorageProcCallProvider.execute(
       connection,
-      "begin\n   ? := exp_pipe.get_table_chunk(?);\nend;",
+        """declare
+        |   g_ctx DBMS_XMLGEN.ctxHandle := ?;
+        |   cl clob;
+        |   rnum integer := 0;
+        |begin
+        |   cl := dbms_xmlgen.getxml(g_ctx);
+        |   rnum := dbms_xmlgen.getnumrowsprocessed(g_ctx);
+        |   if rnum = 0 then
+        |       dbms_lob.createtemporary(cl, true, dbms_lob.call);
+        |   end if;
+        |   ? := cl;
+        |   ? := rnum;
+        |end;""".stripMargin,
       PProcedureParameterSet(
         List(
+          PIn(Some(ctx), Types.NUMERIC),
           POut(Types.CLOB),
-          PIn(Some(tHash), Types.VARCHAR)
-        )
-      )
-    )
-    res.head match {
-      case c:Clob => Some(c)
-      case _ => Some(null)
-    }
-  }
-  def getPartCLOBXMLGen(connection: Connection) : Option[PartResp] = {
-    val res = StorageProcCallProvider.execute(
-      connection,
-      "begin\n   ? := exp_pipe.get_table_chunk_xmlgen( ? );\nend;",
-      PProcedureParameterSet(
-        List(
-          POut(Types.INTEGER),
-          POut(Types.CLOB)
+          POut(Types.INTEGER)
         )
       )
     )
     (res.head, res.last) match {
-      case (r:Int, c:Clob) => Some(PartResp(r, c))
+      case (c:Clob, r:Int) => Some(PartResp(r, c))
       case _ => Some(null)
     }
   }
 
-  def getPartBLOB(connection: Connection, tHash: String) : Option[Blob] = {
+
+  def openTable(connection: Connection, tbl: Table, fetchRows: Int, condition: String): java.math.BigDecimal = {
     val res = StorageProcCallProvider.execute(
       connection,
-      "begin\n   ? := exp_pipe.get_compressed_chunk(?);\nend;",
-      PProcedureParameterSet(
-        List(
-          POut(Types.BLOB),
-          PIn(Some(tHash), Types.VARCHAR)
-        )
-      )
-    )
-    res.head match {
-      case c:Blob => Some(c)
-      case _ => Some(null)
-    }
-  }
-
-  def openTable(connection: Connection, tbl: Table, fetchRows: Int, condition: String): Seq[Any] = {
-    StorageProcCallProvider.execute(
-      connection,
-      "begin\n   exp_pipe.open_table_xmlgen(?, ?, ?, ?);\nend;",
+      s"""declare
+         |  g_ctx DBMS_XMLGEN.ctxHandle;
+         |  queryText varchar2(32767);
+         |  tblOwner varchar2(30) := ?;
+         |  tblName varchar2(60) := ?;
+         |begin
+         |   select 'select '||listagg(atc.column_name || ' ' ||${PipeConfig.XML_COLUMN_PREFIX} || column_id, ',')
+         |   WITHIN GROUP (ORDER BY column_id)  ||
+         |   ' from ${tbl.owner}.${tbl.name} ${if(condition.nonEmpty) " where " + condition else ""}'
+         |   into queryText
+         |   from all_tab_columns atc WHERE atc.owner = '${tbl.owner}' AND atc.table_name = '${tbl.name}';
+         |   g_ctx := dbms_xmlgen.newcontext(queryText);
+         |   dbms_xmlgen.SETCONVERTSPECIALCHARS (g_ctx, true);
+         |   dbms_xmlgen.setmaxrows(g_ctx, ?);
+         |   ? := g_ctx;
+         |exception when others then
+         |   raise_application_error('-20101', 'Parsing error for ${tbl.toEscapedString}');
+         |end;""".stripMargin,
       PProcedureParameterSet(
         List(
           PIn(Some(tbl.owner), Types.VARCHAR),
           PIn(Some(tbl.name), Types.VARCHAR),
           PIn(Some(fetchRows), Types.INTEGER),
-          PIn(Some(condition), Types.VARCHAR)
+          POut(Types.NUMERIC)
         )
       )
     )
+    res.head match {
+      case c : java.math.BigDecimal => c
+      case _: Any => new java.math.BigDecimal(0)
+    }
   }
 
-  def closeTable(connection: Connection, tHash: String): Seq[Any] = {
+  def closeTableXMLGen(connection: Connection, ctx: java.math.BigDecimal): Seq[Any] = {
     StorageProcCallProvider.execute(
       connection,
-      "begin\n   exp_pipe.close_table(?);\nend;",
+      "begin\n   dbms_xmlgen.closecontext(?);\nend;",
       PProcedureParameterSet(
         List(
-          PIn(Some(tHash), Types.VARCHAR)
+          PIn(Some(ctx), Types.NUMERIC),
         )
-      )
-    )
-  }
-  def closeTableXMLGen(connection: Connection): Seq[Any] = {
-    StorageProcCallProvider.execute(
-      connection,
-      "begin\n   exp_pipe.close_table_xmlgen;\nend;",
-      PProcedureParameterSet(
-        List()
       )
     )
   }
@@ -114,5 +108,4 @@ object OraTools {
     statement.close()
     res
   }
-
 }

@@ -2,7 +2,7 @@ package org.pipeoratopg.pg
 
 import com.typesafe.config.Config
 import org.pipeoratopg.PipeConfig.XMLGEN_ROWSET
-import org.pipeoratopg.ora.{AbstractDataPart, DataPartClob}
+import org.pipeoratopg.ora.{AbstractDataPart, DataPartClob, DataPartEmpty}
 import org.pipeoratopg.{Columns, PipeConfig, Table}
 import org.slf4j.{Logger, LoggerFactory}
 import slick.jdbc.JdbcBackend.Database
