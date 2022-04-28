@@ -2,16 +2,15 @@ package org.pipeoratopg.pg
 
 import com.typesafe.config.Config
 import org.pipeoratopg.PipeConfig.XMLGEN_ROWSET
-import org.pipeoratopg.ora.{AbstractDataPart, DataPartClob, DataPartEmpty}
+import org.pipeoratopg.ora.{AbstractDataPart, DataPartClob}
 import org.pipeoratopg.{Columns, PipeConfig, Table}
 import org.slf4j.{Logger, LoggerFactory}
 import slick.jdbc.JdbcBackend.Database
 import slick.jdbc.PostgresProfile.api._
 import slick.jdbc.{PositionedParameters, SetParameter}
 
-import java.io.{BufferedReader, Reader}
-import java.sql.{Clob, PreparedStatement, Types}
-import scala.concurrent.{ExecutionContext, Future}
+import java.io.Reader
+import scala.concurrent.Future
 
 class SinkTask(globalDB: Option[Database],  config: Config, tbl: Table) {
   val log: Logger = LoggerFactory.getLogger(this.getClass)

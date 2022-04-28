@@ -9,7 +9,6 @@ import slick.jdbc.JdbcBackend.Database
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
-
 class FuturedSourceTask(globalDB: Option[Database],
                         config: Config,
                         oraConnection: OraSession)

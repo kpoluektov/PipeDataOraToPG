@@ -5,7 +5,7 @@
 
     <groupId>org.pipeoratopg</groupId>
     <artifactId>pipe</artifactId>
-    <version>1.0.1</version>
+    <version>1.2.0</version>
     <name>PipeOraToPG</name>
     <description>Oracle to PostgreSQL data pipe</description>
 
