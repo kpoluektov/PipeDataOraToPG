@@ -18,7 +18,7 @@ class FuturedSourceTask(globalDB: Option[Database],
   val sourceTableConf: Config = config.getConfig("table")
   val tbl: Table = Table(sourceTableConf.getString("owner"), sourceTableConf.getString("name"))
 
-  log.debug("SourceTask for table '{}' created", tbl)
+  log.info("SourceTask for table '{}' created", tbl)
   var futuredConnection : Option[OraSession] = Some(null)
   var sinkTask : Option[SinkTask] = Option(null)
   var t0 : Long = 0L
@@ -58,7 +58,8 @@ class FuturedSourceTask(globalDB: Option[Database],
     tbl
   }
 
-  def getPace(numRows: Int ) : String = if (numRows> 0) (numRows/((System.nanoTime() - t0)/TIME_DIVIDER)).round.toString + " rps"
+  def getPace(numRows: Int ) : String =
+    if (numRows> 0) (numRows/((System.nanoTime() - t0)/TIME_DIVIDER)).round.toString + " rows/sec"
       else ""
 
   def doNext[T](result: T): Unit = {

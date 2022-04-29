@@ -7,6 +7,9 @@ import java.util.Map.Entry
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 
 object PipeConfig extends Constants{
+  val configGetIntIfExists : (Config, String, Int) => Int = ( conf, str, defVal ) =>
+    if(conf.hasPath(str)) conf.getInt(str) else defVal
+
   val config: Config = System.getProperty("config.path") match {
     case s:String =>
       try {
@@ -17,7 +20,8 @@ object PipeConfig extends Constants{
     case _ => ConfigFactory.load()
   }
 
-  val fetchSize: Int = config.getInt("fetchsize")
+  val fetchSize: Int = configGetIntIfExists(config, "fetchsize", 500000)
+
   val checkLOBSize: Boolean = config.getBoolean("checklob")
 
   val typeMapping : Map[String, String]= if (config.hasPath(TYPEMAPPING_STR))

@@ -4,7 +4,7 @@ import com.typesafe.config.Config
 import org.pipeoratopg.Constants
 import org.slf4j.{Logger, LoggerFactory}
 
-import java.sql.{Connection, DriverManager}
+import java.sql.{Connection, DriverManager, SQLException}
 
 class OraSession(config: Config) extends Constants{
   val log: Logger = LoggerFactory.getLogger(this.getClass)
@@ -28,7 +28,7 @@ class OraSession(config: Config) extends Constants{
         | nls_timestamp_tz_format='YYYY-MM-DD HH:MI:SS.FF TZH:TZM'""".stripMargin)
       st.close()
     } catch {
-      case e: Throwable => e.printStackTrace()
+      case e: SQLException => throw new Exception("Cannot establish connection to source DB " + e.getMessage)
     }
   }
 

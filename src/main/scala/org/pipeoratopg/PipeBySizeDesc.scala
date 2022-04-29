@@ -18,9 +18,11 @@ object PipeBySizeDesc extends App{
   val sinkDB : Database = Database.forConfig("pg", PipeConfig.config)
   val oraConn = new OraSession(PipeConfig.config)
   val oraOwner = PipeConfig.config.getString("oraOwner")
+
   val oraMask = PipeConfig.config.getString("oramask")
-  val threadPoolSize = if (PipeConfig.config.hasPath(PipeConfig.NUMTHREADS_STR)) PipeConfig.config.getInt(PipeConfig.NUMTHREADS_STR)
-  else  2
+
+  val threadPoolSize = PipeConfig.configGetIntIfExists(PipeConfig.config, PipeConfig.NUMTHREADS_STR, 2)
+
   private val tablesQueue = new ConcurrentLinkedQueue[Table] // for ordered sequence
   private val tablesHash: ConcurrentHashMap[String, Table] = new ConcurrentHashMap() // Monitor when finished
 
