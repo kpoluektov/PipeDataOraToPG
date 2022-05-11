@@ -1,7 +1,7 @@
 package org.pipeoratopg.pg
 
 case class PGType(oraType : String, dataLength : Int) {
-  val PGType = oraType match {
+  private val PGType = oraType match {
     case "INTEGER"                => "INTEGER"
     case "NUMBER"                 => "NUMERIC"
     case "FLOAT"                  => "FLOAT8"

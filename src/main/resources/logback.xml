@@ -6,7 +6,6 @@
             <pattern>%X{akkaTimestamp} %-5level[%thread] %logger{0} - %msg%n</pattern>
         </encoder>
     </appender>
-    <logger name="akka" level="INFO" />
     <root level="INFO">
         <appender-ref ref="CONSOLE"/>
     </root>                            

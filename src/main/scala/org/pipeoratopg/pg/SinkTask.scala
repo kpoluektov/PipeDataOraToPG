@@ -1,15 +1,12 @@
 package org.pipeoratopg.pg
 
 import com.typesafe.config.Config
-import org.pipeoratopg.PipeConfig.XMLGEN_ROWSET
+import org.pipeoratopg.PipeConfig.xPathSelect
 import org.pipeoratopg.ora.{AbstractDataPart, DataPartClob}
 import org.pipeoratopg.{Columns, Table}
 import org.slf4j.{Logger, LoggerFactory}
 import slick.jdbc.JdbcBackend.Database
-import slick.jdbc.PostgresProfile.api._
-import slick.jdbc.{PositionedParameters, SetParameter}
 
-import java.io.Reader
 import scala.concurrent.Future
 
 class SinkTask(globalDB: Option[Database],  config: Config, tbl: Table) {
@@ -32,25 +29,11 @@ class SinkTask(globalDB: Option[Database],  config: Config, tbl: Table) {
     log.debug("SinkTask for table '{}' inited with column size of {}", tbl, this.columns.list.size)
   }
 
-  implicit val readerSetter: AnyRef with SetParameter[Reader] = SetParameter[Reader]{
-    {
-      case (reader:Reader, params:PositionedParameters) => params.ps.setCharacterStream(1, reader)
-      case _ =>
-    }
-  }
-
   def executePart(part : AbstractDataPart): Future[Int] = {
-    val action  = part match {
-      case c: DataPartClob =>
-        val s = sqlu"""with aTab as (select xml(${c.getBody}) as data)
-          insert into #$pgSchema.#${tbl.pgName.get} (#${columns.toColumnList})
-          SELECT #${columns.toValuesColumnList}--xmltable.*
-          FROM aTab,
-          XMLTABLE('//#$XMLGEN_ROWSET/ROW'
-          PASSING data
-            COLUMNS #${columns.toPGXMLString});"""
-        db.run(s)
+    val action  = (part, xPathSelect) match {
+      case (c: DataPartClob, true) => PGTools.getXPathQuery(c, tbl, columns, pgSchema)
+      case (c: DataPartClob, false) => PGTools.getXMLTableQuery(c, tbl, columns, pgSchema)
     }
-    action
+    db.run(action)
   }
 }

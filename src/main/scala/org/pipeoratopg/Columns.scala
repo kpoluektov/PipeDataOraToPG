@@ -1,7 +1,6 @@
 package org.pipeoratopg
 
 import org.pipeoratopg.pg.{PGName, PGType}
-
 import scala.collection.mutable
 
 case class Column(oraName: String, oraType: String, xmlName: String,
@@ -12,12 +11,20 @@ case class Column(oraName: String, oraType: String, xmlName: String,
         case _ =>
     }
   }
-  def toXPATHString : String = s"${this.pgName.get} ${this.pgType.get} PATH '${this.xmlName}'"
+  def toPASSINGString : String = s"${this.pgName.get} ${this.pgType.get} PATH '${this.xmlName}'"
   def toValuesColumn : String = {
     this.oraType match {
     case "BLOB" | "RAW" => s"decode(${this.pgName.get}, 'hex')"
     case _ => this.pgName.get
   }}
+
+  def toXPATHString : String = {
+    this.oraType match {
+      case "BLOB" | "RAW" => s"decode((xpath('/ROW/$xmlName/text()', atab.data))[1]::text, 'hex')"
+      case _ => s"(xpath('/ROW/$xmlName/text()', atab.data))[1]::text::${pgType.get}"
+    }
+  }
+
 }
 
 object Column {
@@ -28,9 +35,10 @@ object Column {
 class Columns {
   var list: mutable.Seq[Column] = mutable.Seq[Column]()
   def add(c: Column): Unit = this.list = this.list :+ c
-  def toPGXMLString: String = list.map(_.toXPATHString).mkString(",\n")
+  def toPGXMLString: String = list.map(_.toPASSINGString).mkString(",\n")
   def toValuesColumnList: String = list.map(_.toValuesColumn).mkString(",")
   def toColumnList: String = list.map{ c => c.pgName.get}.mkString(",")
+  def toXPathSelectList : String = list.map(_.toXPATHString).mkString(",\n")
 }
 
 

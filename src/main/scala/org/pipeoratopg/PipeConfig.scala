@@ -9,6 +9,8 @@ import scala.jdk.CollectionConverters.CollectionHasAsScala
 object PipeConfig extends Constants{
   val configGetIntIfExists : (Config, String, Int) => Int = ( conf, str, defVal ) =>
     if(conf.hasPath(str)) conf.getInt(str) else defVal
+  val configGetBoolIfExists : (Config, String, Boolean) => Boolean = ( conf, str, defVal ) =>
+    if(conf.hasPath(str)) conf.getBoolean(str) else defVal
 
   val config: Config = System.getProperty("config.path") match {
     case s:String =>
@@ -22,7 +24,9 @@ object PipeConfig extends Constants{
 
   val fetchSize: Int = configGetIntIfExists(config, "fetchsize", 500000)
 
-  val checkLOBSize: Boolean = config.getBoolean("checklob")
+  val checkLOBSize: Boolean = configGetBoolIfExists(config, "checklob", true)
+
+  val xPathSelect : Boolean = configGetBoolIfExists(config, "xPathSelect", false)
 
   val typeMapping : Map[String, String]= if (config.hasPath(TYPEMAPPING_STR))
     (for {
