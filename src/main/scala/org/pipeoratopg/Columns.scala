@@ -39,6 +39,13 @@ class Columns {
   def toValuesColumnList: String = list.map(_.toValuesColumn).mkString(",")
   def toColumnList: String = list.map{ c => c.pgName.get}.mkString(",")
   def toXPathSelectList : String = list.map(_.toXPATHString).mkString(",\n")
+  def toOracleSelectList(transMap : Map[String, String]) : String = {
+    list.map(c =>
+      if (transMap.exists(_._1 == c.oraName))
+        transMap.get(c.oraName).get
+      else c.oraName
+        + " " + c.xmlName).mkString(",\n")
+  }
 }
 
 

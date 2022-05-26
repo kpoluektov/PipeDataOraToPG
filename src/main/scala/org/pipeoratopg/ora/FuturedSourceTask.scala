@@ -1,13 +1,15 @@
 package org.pipeoratopg.ora
 
-import com.typesafe.config.Config
+import com.typesafe.config.{Config, ConfigObject, ConfigValue}
 import org.pipeoratopg.pg.SinkTask
 import org.pipeoratopg._
 import org.slf4j.{Logger, LoggerFactory}
 import slick.jdbc.JdbcBackend.Database
 
+import java.util.Map.Entry
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
+import scala.jdk.CollectionConverters.CollectionHasAsScala
 
 class FuturedSourceTask(globalDB: Option[Database],
                         config: Config,
@@ -17,7 +19,7 @@ class FuturedSourceTask(globalDB: Option[Database],
   val log: Logger = LoggerFactory.getLogger(this.getClass)
   val sourceTableConf: Config = config.getConfig("table")
   val tbl: Table = Table(sourceTableConf.getString("owner"), sourceTableConf.getString("name"))
-
+  val cols: Columns = OraTools.getColumns(oraConnection.get(), tbl)
   log.info("SourceTask for table '{}' created", tbl)
   var futuredConnection : Option[OraSession] = Some(null)
   var sinkTask : Option[SinkTask] = Option(null)
@@ -31,10 +33,20 @@ class FuturedSourceTask(globalDB: Option[Database],
       config.getString(conPath)
     else ""
 
+  // read column transformation map
+  val transPath : String = tbl.toEscapedString + "." + COLUMNTRANS_STR
+  val colTransMap : Map[String, String]= if (config.hasPath(transPath))
+    (for {
+      item : ConfigObject <- config.getObjectList(transPath).asScala
+      entry : Entry[String, ConfigValue] <- item.entrySet().asScala
+      string = new (String)(entry.getValue.unwrapped().toString)
+      mykey = entry.getKey
+    } yield (mykey, string)).toMap
+  else Map()
+
   var XMLGenCtx : java.math.BigDecimal = new java.math.BigDecimal(0)
 
   def init(): Unit = {
-    val cols: Columns = OraTools.getColumns(oraConnection.get(), tbl)
     val includeLOBSize = PipeConfig.checkLOBSize && cols.list.exists(r => r.oraType == "CLOB" || r.oraType == "BLOB")
     val rowSize = OraTools.getFetchSize(oraConnection.get(), tbl, includeLOBSize)
     log.debug("rowsize for table '{}' is {}", tbl, rowSize)
@@ -42,7 +54,9 @@ class FuturedSourceTask(globalDB: Option[Database],
     log.debug("fetchrows size for table '{}' is {}", tbl, frows)
     futuredConnection = Some(new OraSession(config))
     futuredConnection.get.open()
-    XMLGenCtx = OraTools.openTable(futuredConnection.get.get(), tbl, frows, condition)
+    val colListStr = cols.toOracleSelectList(colTransMap)
+    log.info("Column list is {}", colListStr)
+    XMLGenCtx = OraTools.openTable(futuredConnection.get.get(), tbl, frows, condition, colListStr)
     t0 = System.nanoTime()
     sinkTask = Some(new SinkTask(globalDB, config, tbl))
     sinkTask.get.init(cols)

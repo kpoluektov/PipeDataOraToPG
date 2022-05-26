@@ -30,7 +30,8 @@ class TestPipe extends FlatSpec with Matchers with Eventually{
     val tableConfig = ConfigFactory.parseString(s"""table.name="${t1.get.name}", table.owner="${t1.get.owner}" """)
     val newConfig = tableConfig.withFallback(fileConfig)
     val fTask = new FuturedSourceTask(Some(sinkDB), newConfig, oraConn)
-    val XMLGenCtx = OraTools.openTable(oraConn.get(), t1.get, 10, "rownum < 1")
+    val XMLGenCtx = OraTools.openTable(oraConn.get(), t1.get, 10, "rownum < 1",
+      fTask.cols.toOracleSelectList(fTask.colTransMap))
     fTask.sinkTask = Some(new SinkTask(Some(sinkDB), newConfig, t1.get))
     fTask.sinkTask.get.init(OraTools.getColumns(oraConn.get(), t1.get))
     val s = fTask.spool(oraConn, 10, XMLGenCtx)
@@ -45,7 +46,8 @@ class TestPipe extends FlatSpec with Matchers with Eventually{
     val tableConfig = ConfigFactory.parseString(s"""table.name="${t1.get.name}", table.owner="${t1.get.owner}" """)
     val newConfig = tableConfig.withFallback(fileConfig)
     val fTask = new FuturedSourceTask(Some(sinkDB), newConfig, oraConn)
-    val XMLGenCtx = OraTools.openTable(oraConn.get(), t1.get, 10, "rownum <= 11")
+    val XMLGenCtx = OraTools.openTable(oraConn.get(), t1.get, 10, "rownum <= 11",
+      fTask.cols.toOracleSelectList(fTask.colTransMap))
     fTask.sinkTask = Some(new SinkTask(Some(sinkDB), newConfig, t1.get))
     fTask.sinkTask.get.init(OraTools.getColumns(oraConn.get(), t1.get))
     val s = fTask.spool(oraConn, 10, XMLGenCtx)
@@ -60,7 +62,8 @@ class TestPipe extends FlatSpec with Matchers with Eventually{
     val tableConfig = ConfigFactory.parseString(s"""table.name="${t1.get.name}", table.owner="${t1.get.owner}" """)
     val newConfig = tableConfig.withFallback(fileConfig)
     val fTask = new FuturedSourceTask(Some(sinkDB), newConfig, oraConn)
-    val XMLGenCtx = OraTools.openTable(oraConn.get(), t1.get, 10, "")
+    val XMLGenCtx = OraTools.openTable(oraConn.get(), t1.get, 10, "",
+      fTask.cols.toOracleSelectList(fTask.colTransMap))
     fTask.sinkTask = Some(new SinkTask(Some(sinkDB), newConfig, t1.get))
     fTask.sinkTask.get.init(OraTools.getColumns(oraConn.get(), t1.get))
     val s = fTask.spool(oraConn, 10, XMLGenCtx)
@@ -75,7 +78,8 @@ class TestPipe extends FlatSpec with Matchers with Eventually{
     val tableConfig = ConfigFactory.parseString(s"""table.name="${t1.get.name}", table.owner="${t1.get.owner}" """)
     val newConfig = tableConfig.withFallback(fileConfig)
     val fTask = new FuturedSourceTask(Some(sinkDB), newConfig, oraConn)
-    val XMLGenCtx = OraTools.openTable(oraConn.get(), t1.get, 10, "")
+    val XMLGenCtx = OraTools.openTable(oraConn.get(), t1.get, 10, "",
+      fTask.cols.toOracleSelectList(fTask.colTransMap))
     fTask.sinkTask = Some(new SinkTask(Some(sinkDB), newConfig, t1.get))
     fTask.sinkTask.get.init(OraTools.getColumns(oraConn.get(), t1.get))
     val s = fTask.spool(oraConn, 10, XMLGenCtx)

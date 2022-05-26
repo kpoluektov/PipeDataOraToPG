@@ -39,22 +39,22 @@ object OraTools {
   }
 
 
-  def openTable(connection: Connection, tbl: Table, fetchRows: Int, condition: String): java.math.BigDecimal = {
+  def openTable(connection: Connection,
+                tbl: Table,
+                fetchRows: Int,
+                condition: String,
+                cols: String): java.math.BigDecimal = {
     val res = StorageProcCallProvider.execute(
       connection,
-      s"""declare
-         |  g_ctx DBMS_XMLGEN.ctxHandle;
-         |  queryText varchar2(32767);
-         |  tblOwner varchar2(30) := ?;
-         |  tblName varchar2(60) := ?;
+         s"""declare
+         |   g_ctx DBMS_XMLGEN.ctxHandle;
+         |   queryText varchar2(32767);
+         |   tblOwner varchar2(30) := ?;
+         |   tblName varchar2(60) := ?;
          |begin
-         |   select 'select '||listagg(atc.column_name || ' ' ||${PipeConfig.XML_COLUMN_PREFIX} || column_id, ',')
-         |   WITHIN GROUP (ORDER BY column_id)  ||
-         |   ' from ${tbl.owner}.${tbl.name} ${if(condition.nonEmpty) " where " + condition else ""}'
-         |   into queryText
-         |   from all_tab_columns atc WHERE atc.owner = '${tbl.owner}' AND atc.table_name = '${tbl.name}';
+         |   queryText := 'select $cols from ${tbl.owner}.${tbl.name} ${if(condition.nonEmpty) " where " + condition else ""}';
          |   g_ctx := dbms_xmlgen.newcontext(queryText);
-         |   dbms_xmlgen.SETCONVERTSPECIALCHARS (g_ctx, true);
+         |   dbms_xmlgen.SETCONVERTSPECIALCHARS (g_ctx, false);
          |   dbms_xmlgen.setmaxrows(g_ctx, ?);
          |   ? := g_ctx;
          |exception when others then
