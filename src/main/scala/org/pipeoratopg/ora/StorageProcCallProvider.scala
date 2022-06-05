@@ -67,7 +67,7 @@ object StorageProcCallProvider {
         case _ => log.debug(s"Failed to match ProcedureParameter in executeFunction (IN): index {} ({})", index, parameter.toString)
       }
     }
-
+    log.debug("Oracle: executing query {}", sql)
     cs.executeUpdate()
 
     // Parse output pars

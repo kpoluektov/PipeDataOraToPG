@@ -59,7 +59,6 @@ object PipeBySizeDesc extends App{
             val tableConfig = ConfigFactory.parseString(s"""table.name="${t.name}", table.owner="${t.owner}" """)
             val newConfig = tableConfig.withFallback(PipeConfig.config)
             val f = new FuturedSourceTask(Some(sinkDB), newConfig, oraConn)
-            f.init()
             f.run()
           case _ => //shouldn't get here
         }

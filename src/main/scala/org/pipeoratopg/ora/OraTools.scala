@@ -1,56 +1,81 @@
 package org.pipeoratopg.ora
 
 import org.pipeoratopg.PipeConfig.XML_COLUMN_PREFIX
-import org.pipeoratopg.{Column, Columns, PipeConfig, Table}
+import org.pipeoratopg.{Column, Columns, Table}
 
-import java.sql.{Clob, Connection, SQLException, Types}
-case class PartResp(rows: Int, clob: Clob)
+import java.sql.{Blob, Clob, Connection, SQLException, Types}
+sealed trait PartResp{
+  def rows: Int
+}
+case class PartRespClob(override val rows: Int, lob: Clob) extends PartResp
+case class PartRespBlob(override val rows: Int, lob: Blob) extends PartResp
 
 object OraTools {
+  val sqlGetPartXML: String =
+                          """declare
+                          |   g_ctx DBMS_XMLGEN.ctxHandle := ?;
+                          |   cl clob;
+                          |   rows integer := ?;
+                          |   rnum integer := 0;
+                          |begin
+                          |   cl := dbms_xmlgen.getxml(g_ctx);
+                          |   rnum := dbms_xmlgen.getnumrowsprocessed(g_ctx);
+                          |   if rnum = 0 then
+                          |       dbms_lob.createtemporary(cl, true, dbms_lob.call);
+                          |   end if;
+                          |   ? := cl;
+                          |   ? := rnum;
+                          |end;""".stripMargin
 
-  def getPartCLOBXMLGen(connection: Connection, ctx : java.math.BigDecimal) : Option[PartResp] = {
+  val sqlGetPartJson: String =
+                          """declare
+                          |   ctx integer := ?;
+                          |   row_table dbms_sql.blob_table;
+                          |   rnum pls_integer := -1;
+                          |   cl blob;
+                          |begin
+                          |   dbms_sql.define_array(ctx, 1, row_table, ?, 1);
+                          |   rnum := dbms_sql.fetch_rows(ctx);
+                          |   dbms_sql.column_value(ctx, 1, row_table);
+                          |   if rnum > 0 then
+                          |      select JSON_ARRAYAGG(column_value FORMAT JSON returning blob)
+                          |          into cl from table(row_table);
+                          |   else
+                          |      select empty_blob into cl from dual;
+                          |   end if;
+                          |   ? := cl;
+                          |   ? := rnum;
+                          |end;""".stripMargin
+  def getPartCLOB(isXML: Boolean, connection: Connection, ctx : java.math.BigDecimal, rowNum: Int) : Option[PartResp] = {
     val res = StorageProcCallProvider.execute(
       connection,
-        """declare
-        |   g_ctx DBMS_XMLGEN.ctxHandle := ?;
-        |   cl clob;
-        |   rnum integer := 0;
-        |begin
-        |   cl := dbms_xmlgen.getxml(g_ctx);
-        |   rnum := dbms_xmlgen.getnumrowsprocessed(g_ctx);
-        |   if rnum = 0 then
-        |       dbms_lob.createtemporary(cl, true, dbms_lob.call);
-        |   end if;
-        |   ? := cl;
-        |   ? := rnum;
-        |end;""".stripMargin,
+      if (isXML) sqlGetPartXML else sqlGetPartJson,
       PProcedureParameterSet(
         List(
           PIn(Some(ctx), Types.NUMERIC),
-          POut(Types.CLOB),
+          PIn(Some(rowNum), Types.INTEGER),
+          POut(if (isXML) Types.CLOB  else Types.BLOB),
           POut(Types.INTEGER)
         )
       )
     )
     (res.head, res.last) match {
-      case (c:Clob, r:Int) => Some(PartResp(r, c))
+      case (c:Clob, r:Int) => Some(PartRespClob(r, c))
+      case (b:Blob, r:Int) => Some(PartRespBlob(r, b))
       case _ => Some(null)
     }
   }
 
-
-  def openTable(connection: Connection,
+  def openTableXML(connection: Connection,
                 tbl: Table,
                 fetchRows: Int,
                 condition: String,
                 cols: String): java.math.BigDecimal = {
     val res = StorageProcCallProvider.execute(
       connection,
-         s"""declare
+      s"""declare
          |   g_ctx DBMS_XMLGEN.ctxHandle;
          |   queryText varchar2(32767);
-         |   tblOwner varchar2(30) := ?;
-         |   tblName varchar2(60) := ?;
          |begin
          |   queryText := 'select $cols from ${tbl.owner}.${tbl.name} ${if(condition.nonEmpty) " where " + condition else ""}';
          |   g_ctx := dbms_xmlgen.newcontext(queryText);
@@ -62,8 +87,6 @@ object OraTools {
          |end;""".stripMargin,
       PProcedureParameterSet(
         List(
-          PIn(Some(tbl.owner), Types.VARCHAR),
-          PIn(Some(tbl.name), Types.VARCHAR),
           PIn(Some(fetchRows), Types.INTEGER),
           POut(Types.NUMERIC)
         )
@@ -75,17 +98,52 @@ object OraTools {
     }
   }
 
-  def closeTableXMLGen(connection: Connection, ctx: java.math.BigDecimal): Seq[Any] = {
-    StorageProcCallProvider.execute(
+  def openTableJson(connection: Connection,
+                tbl: Table,
+                fetchRows: Int,
+                condition: String,
+                cols: String): java.math.BigDecimal = {
+    val res = StorageProcCallProvider.execute(
       connection,
-      "begin\n   dbms_xmlgen.closecontext(?);\nend;",
+         s"""declare
+         |   cursor_ integer;
+         |   cursor_status  integer;
+         |   queryText varchar2(32767);
+         |begin
+         |   queryText := 'select json_object($cols absent on null returning blob )
+         |   from ${tbl.owner}.${tbl.name} ${if(condition.nonEmpty) " where " + condition else ""}';
+         |   cursor_ := dbms_sql.open_cursor;
+         |   dbms_sql.parse(cursor_, queryText, dbms_sql.native);
+         |   cursor_status := dbms_sql.execute(cursor_);
+         |   ? := cursor_;
+         |exception when others then
+         |   raise_application_error('-20101', 'Parsing error for ${tbl.toEscapedString}');
+         |end;""".stripMargin,
       PProcedureParameterSet(
         List(
-          PIn(Some(ctx), Types.NUMERIC),
+          POut(Types.NUMERIC)
+        )
+      )
+    )
+    res.head match {
+      case c : java.math.BigDecimal => c
+      case _: Any => new java.math.BigDecimal(0)
+    }
+  }
+  val sqlCloseXML = "begin\n   dbms_xmlgen.closecontext(?);\nend;"
+  val sqlCloseJson = "begin\n   dbms_sql.close_cursor(?);\nend;"
+  def closeTable(isXML : Boolean, connection: Connection, ctx: java.math.BigDecimal): Seq[Any] = {
+    StorageProcCallProvider.execute(
+      connection,
+      if (isXML) sqlCloseXML else sqlCloseJson,
+      PProcedureParameterSet(
+        List(
+          PIn(Some(ctx), Types.NUMERIC)
         )
       )
     )
   }
+
   val relSizeSQL = "select atbl.avg_row_len from all_tables atbl"
 
   val lobSizeSQL: String = """select atbl.avg_row_len from (

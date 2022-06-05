@@ -2,8 +2,9 @@ package org.pipeoratopg.ora
 
 import org.pipeoratopg.PipeConfig.XMLGEN_ROWSET
 
-import java.io.{Reader, StringReader}
-import java.sql.{Blob, Clob, Connection}
+import java.io.{InputStreamReader, Reader, StringReader}
+import java.sql.{Blob, Clob}
+
 
 sealed trait AbstractDataPart{
   def body : Any
@@ -18,12 +19,21 @@ case class DataPartEmpty() extends AbstractDataPart{
 }
 
 
-case class DataPartClob(body : Clob, actualRows: Int, partSize: Int) extends AbstractDataPart {
+case class DataPartClobXML(body : Clob, actualRows: Int, partSize: Int) extends AbstractDataPart {
 
   override def getBody: Reader = {
     if (actualRows > 0) body.getCharacterStream else new StringReader("<"+XMLGEN_ROWSET+"/>")
   }
 
+  def hasNext : Boolean = {
+    actualRows == partSize
+  }
+}
+case class DataPartClobJSON(body : Blob, actualRows: Int, partSize: Int) extends AbstractDataPart {
+  override def getBody: Reader = {
+    // Oracle provides JSON as binary stream of utf chars. So let's try to pass it as is
+    if (actualRows > 0) new InputStreamReader(body.getBinaryStream) else new StringReader("[]")
+  }
   def hasNext : Boolean = {
     actualRows == partSize
   }
@@ -34,20 +44,18 @@ case class DataPartBlob(body : Blob, partSize: Int) extends AbstractDataPart  {
   def hasNext : Boolean = true
 }
 
-class DataPartIterable[B <: AbstractDataPart](tConn: Connection, fetchRows: Int, partType : String, XMLGenCtx: java.math.BigDecimal)
+class DataPartIterable[B <: AbstractDataPart](fetchRows: Int, sTable: SourceTable)
                                                                             extends Iterable[AbstractDataPart]{
   override def iterator: Iterator[AbstractDataPart] = {
     var current : AbstractDataPart = DataPartEmpty()
     new Iterator[AbstractDataPart] {
       override def hasNext: Boolean = current.hasNext
       override def next(): AbstractDataPart = {
-        current = partType match{
-          case "Clob" =>  OraTools.getPartCLOBXMLGen(tConn, XMLGenCtx) match {
-            case Some(p:PartResp) => DataPartClob (p.clob, p.rows, fetchRows)
-//            case _ => DataPartEmpty()
-          }
-          case "Blob"  => throw new Exception("Not implemented yet") //DataPartBlob(OraTools.getPartBLOB(tConn, cursor).get, fetchRows)
-          case _ => throw new Exception("Unknown part type!");
+        current = (sTable.getChunk, sTable) match {
+            case (Some(p:PartRespClob), _:SourceTableXML) =>
+              DataPartClobXML (p.lob, p.rows, fetchRows)
+            case (Some(p:PartRespBlob), _:SourceTableJson) =>
+              DataPartClobJSON (p.lob, p.rows, fetchRows)
         }
         current
       }

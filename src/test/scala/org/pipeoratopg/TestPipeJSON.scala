@@ -2,7 +2,7 @@ package org.pipeoratopg
 
 import com.typesafe.config.ConfigFactory
 import org.pipeoratopg.ora.{FuturedSourceTask, OraSession, OraTools, SourceTableXML}
-import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.FlatSpec
 import org.scalatest.concurrent.Eventually
 import org.scalatest.matchers.should.Matchers
 import slick.jdbc.JdbcBackend.Database
@@ -12,7 +12,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor, Future}
 
 
-class TestPipe extends AnyFlatSpec with Matchers with Eventually{
+class TestPipeJSON extends FlatSpec with Matchers with Eventually{
   private val myConfigFile = new File("src/test/resources/application.conf")
   private val fileConfig = ConfigFactory.parseFile(myConfigFile)
   val sinkDB : Database = Database.forConfig("pg", PipeConfig.config)
@@ -27,7 +27,8 @@ class TestPipe extends AnyFlatSpec with Matchers with Eventually{
   it should "Should pipe 0 rows" in {
     val t1 = tableMap.get(oraOwner + ".POL_TEST_OBJECTS")
     val tableConfig = ConfigFactory.parseString(
-      s"""table.name="${t1.get.name}",
+      s"""jsonFormat = true,
+         |table.name="${t1.get.name}",
          |table.owner="${t1.get.owner}",
          |POL.POL_TEST_OBJECTS.condition = "rownum < 1" """.stripMargin)
     val newConfig = tableConfig.withFallback(fileConfig)
@@ -42,7 +43,8 @@ class TestPipe extends AnyFlatSpec with Matchers with Eventually{
   it should "Should pipe 11 rows" in {
     val t1 = tableMap.get(oraOwner + ".POL_TEST_OBJECTS")
     val tableConfig = ConfigFactory.parseString(
-      s"""table.name="${t1.get.name}",
+      s"""jsonFormat = true,
+         |table.name="${t1.get.name}",
          |table.owner="${t1.get.owner}"
          |POL.POL_TEST_OBJECTS <= 12""".stripMargin)
     val newConfig = tableConfig.withFallback(fileConfig)
@@ -57,12 +59,12 @@ class TestPipe extends AnyFlatSpec with Matchers with Eventually{
   it should "Should pipe 1 row into TYPE_TEST_TABLE" in {
     val t1 = tableMap.get(oraOwner + ".TYPE_TEST_TABLE")
     val tableConfig = ConfigFactory.parseString(
-      s"""table.name="${t1.get.name}",
+      s"""jsonFormat = true
+         |table.name="${t1.get.name}",
          |table.owner="${t1.get.owner}"
          |POL.TYPE_TEST_TABLE.condition= "rownum < 2" """.stripMargin)
     val newConfig = tableConfig.withFallback(fileConfig)
     val fTask = new FuturedSourceTask(Some(sinkDB), newConfig, oraConn)
-    val sTable = SourceTableXML(oraConn, t1.get, 10, "")
     val s = fTask.spool(oraConn, 10)
     val resTable = Await.result(Future.sequence(s), 5.seconds)
     eventually {
@@ -73,12 +75,12 @@ class TestPipe extends AnyFlatSpec with Matchers with Eventually{
   it should "Should pipe 1 rows into POL.POL_TEST_OBJECTS#10" in {
     val t1 = tableMap.get(oraOwner + ".POL_TEST_OBJECTS#10")
     val tableConfig = ConfigFactory.parseString(
-      s"""table.name="${t1.get.name}",
+      s"""jsonFormat = true
+         |table.name="${t1.get.name}",
          |table.owner="${t1.get.owner}"
          POL."POL_TEST_OBJECTS#10".condition= "rownum < 2" """.stripMargin)
     val newConfig = tableConfig.withFallback(fileConfig)
     val fTask = new FuturedSourceTask(Some(sinkDB), newConfig, oraConn)
-    val sTable = SourceTableXML(oraConn, t1.get, 10, "")
     val s = fTask.spool(oraConn, 10)
     val resTable = Await.result(Future.sequence(s), 5.seconds)
     eventually {
