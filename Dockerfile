@@ -9,7 +9,7 @@ FROM adoptopenjdk/openjdk8 AS runtime
 
 WORKDIR /app
 
-COPY --from=builder /target/pipe-1.3.0.jar /app/pipe-1.3.0.jar
+COPY --from=builder /target/pipe-1.4.0.jar /app/pipe-1.4.0.jar
 COPY --from=builder /target/dependency/* /app/
 
 RUN mkdir /config

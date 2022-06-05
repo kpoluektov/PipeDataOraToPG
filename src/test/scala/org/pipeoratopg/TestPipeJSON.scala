@@ -1,9 +1,9 @@
 package org.pipeoratopg
 
 import com.typesafe.config.ConfigFactory
-import org.pipeoratopg.ora.{FuturedSourceTask, OraSession, OraTools, SourceTableXML}
-import org.scalatest.FlatSpec
+import org.pipeoratopg.ora.{FuturedSourceTask, OraSession, OraTools}
 import org.scalatest.concurrent.Eventually
+import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import slick.jdbc.JdbcBackend.Database
 
@@ -12,7 +12,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor, Future}
 
 
-class TestPipeJSON extends FlatSpec with Matchers with Eventually{
+class TestPipeJSON extends AnyFlatSpec with Matchers with Eventually{
   private val myConfigFile = new File("src/test/resources/application.conf")
   private val fileConfig = ConfigFactory.parseFile(myConfigFile)
   val sinkDB : Database = Database.forConfig("pg", PipeConfig.config)

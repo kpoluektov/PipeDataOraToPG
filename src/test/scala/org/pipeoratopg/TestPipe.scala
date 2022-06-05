@@ -1,9 +1,9 @@
 package org.pipeoratopg
 
 import com.typesafe.config.ConfigFactory
-import org.pipeoratopg.ora.{FuturedSourceTask, OraSession, OraTools, SourceTableXML}
-import org.scalatest.flatspec.AnyFlatSpec
+import org.pipeoratopg.ora.{FuturedSourceTask, OraSession, OraTools}
 import org.scalatest.concurrent.Eventually
+import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import slick.jdbc.JdbcBackend.Database
 
@@ -62,7 +62,6 @@ class TestPipe extends AnyFlatSpec with Matchers with Eventually{
          |POL.TYPE_TEST_TABLE.condition= "rownum < 2" """.stripMargin)
     val newConfig = tableConfig.withFallback(fileConfig)
     val fTask = new FuturedSourceTask(Some(sinkDB), newConfig, oraConn)
-    val sTable = SourceTableXML(oraConn, t1.get, 10, "")
     val s = fTask.spool(oraConn, 10)
     val resTable = Await.result(Future.sequence(s), 5.seconds)
     eventually {
@@ -78,7 +77,6 @@ class TestPipe extends AnyFlatSpec with Matchers with Eventually{
          POL."POL_TEST_OBJECTS#10".condition= "rownum < 2" """.stripMargin)
     val newConfig = tableConfig.withFallback(fileConfig)
     val fTask = new FuturedSourceTask(Some(sinkDB), newConfig, oraConn)
-    val sTable = SourceTableXML(oraConn, t1.get, 10, "")
     val s = fTask.spool(oraConn, 10)
     val resTable = Await.result(Future.sequence(s), 5.seconds)
     eventually {
