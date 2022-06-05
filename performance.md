@@ -28,56 +28,53 @@ checklob = true
 fetchsize = 500000  
 `  
 
-### Test1
+### Test1 
 #### Data
 2 tables POL.POL_TEST_OBJECTS5, POL.POL_TEST_OBJECTS6 in parallel. no LOB columns  
 `SQL> select table_name, num_rows, avg_row_len FROM all_tables where owner = 'POL' order by 1;`
 
-`POL_TEST_OBJECTS5                                  1097940         140`  
-`POL_TEST_OBJECTS6                                  1097940         140`
+`POL_TEST_OBJECTS5                                  1097960         140`  
+`POL_TEST_OBJECTS6                                  1097960         140`
 
 `2 rows selected`
 #### Results
-`INFO [pool-1-thread-1] FuturedSourceTask - Table POL.POL_TEST_OBJECTS6 finished. 1097960 rows inserted. 12282 rps`  
-`INFO [pool-1-thread-1] FuturedSourceTask - Table POL.POL_TEST_OBJECTS5 finished. 1097960 rows inserted. 12130 rps`  
-`INFO [pool-1-thread-1] PipeBySizeDesc$ - Pipe finished in 91.7929211 sec`  
+`INFO [pool-1-thread-1] FuturedSourceTask - Table POL.POL_TEST_OBJECTS5 finished. 1097960 rows inserted. 18200 rows/sec`  
+`INFO [pool-1-thread-1] FuturedSourceTask - Table POL.POL_TEST_OBJECTS6 finished. 1097960 rows inserted. 18111 rows/sec`  
+`INFO [pool-1-thread-1] PipeBySizeDesc$ - Pipe finished in 61.9822263 sec`  
 CPU usage ~ 100% 
 
 ### Test2
 #### Data
 1 table POL.POL_TEST_OBJECTS5. no LOB columns
 #### Results
-`INFO [pool-1-thread-2] FuturedSourceTask - Table POL.POL_TEST_OBJECTS5 finished. 1097940 rows inserted. 23018 rps`  
-`INFO [pool-1-thread-2] PipeBySizeDesc$ - Pipe finished in 49.1779654 sec`  
+`INFO [pool-1-thread-1] FuturedSourceTask - Table POL.POL_TEST_OBJECTS5 finished. 1097960 rows inserted. 26350 rows/sec`  
+`INFO [pool-1-thread-1] PipeBySizeDesc$ - Pipe finished in 43.23252 sec`
 CPU usage ~ 100% 
 
 ### Test3
 #### Data
 1 table POL.POL_TEST_OBJECTS5 + CLOB column = empty_clob
 #### Results
-`INFO [pool-1-thread-2] FuturedSourceTask - Table POL.POL_TEST_OBJECTS5 finished. 1097940 rows inserted. 17257 rps`  
-`INFO [pool-1-thread-2] PipeBySizeDesc$ - Pipe finished in 65.7302647 sec`  
+`INFO [pool-1-thread-1] FuturedSourceTask - Table POL.POL_TEST_OBJECTS5 finished. 1097960 rows inserted. 23765 rows/sec`  
+`INFO [pool-1-thread-1] PipeBySizeDesc$ - Pipe finished in 47.8153166 sec`
 CPU usage ~ 100% 
 
 ### Test4
 #### Data
 1 table POL.POL_TEST_OBJECTS5 + CLOB column = XMLForest(all columns for current row). Avg row length is 650 symbols approx.
 #### Results
-`INFO [pool-1-thread-2] FuturedSourceTask - Table POL.POL_TEST_OBJECTS5 finished. 1097940 rows inserted. 7659 rps`  
-`INFO [pool-1-thread-2] PipeBySizeDesc$ - Pipe finished in 145.5811677 sec`    
-
+`INFO [pool-1-thread-2] FuturedSourceTask - Table POL.POL_TEST_OBJECTS5 finished. 1097960 rows inserted. 12243 rows/sec`  
+`INFO [pool-1-thread-2] PipeBySizeDesc$ - Pipe finished in 91.2704871 sec`    
 CPU usage ~ 80% 
 
 ### Test5
 #### Data
 1 table POL.POL_TEST_OBJECTS5 + CLOB column = Some XML. Avg row length is 5150 symbols approx.
 #### Results
-`INFO [pool-1-thread-1] FuturedSourceTask - Table POL.POL_TEST_OBJECTS5 finished. 1097940 rows inserted. 1131 rps`  
-`INFO [pool-1-thread-1] PipeBySizeDesc$ - Pipe finished in 975.2163969 sec`
-
+`INFO [pool-1-thread-1] FuturedSourceTask - Table POL.POL_TEST_OBJECTS5 finished. 1097960 rows inserted. 1219 rows/sec`  
+`INFO [pool-1-thread-1] PipeBySizeDesc$ - Pipe finished in 905.413596 sec`
 CPU usage ~ 60%   
-ENV Bottleneck is "direct path read" wait event 
+ENV Bottleneck is "direct path read" Oracle wait event 
 
 ### Special notes
 Tests were done with "CL8ISO8859P5" and "AL32UTF8" ORACLE CHARACTERSET. 
-In case of "AL32UTF8" `ORA-64451: Conversion of special character to escaped character failed.` issued for some far-non-ascii symbols from IMDB dataset `https://www.imdb.com/interfaces/`. Nothing done to fix yet.  
