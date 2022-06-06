@@ -16,7 +16,7 @@ RUN mkdir /config
 COPY --from=builder /src/main/resources/application_docker.conf /config/application.conf 
 VOLUME /config
 
-CMD exec java -Dconfig.path=/config -classpath /app/pipe-1.3.0.jar org.pipeoratopg.PipeBySizeDesc
+CMD exec java -Dconfig.path=/config -classpath /app/pipe-1.4.0.jar org.pipeoratopg.PipeBySizeDesc
 
 
 
